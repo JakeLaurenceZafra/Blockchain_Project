@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import './Login.css';
+import { registerUser } from '../api';
 
 const Registration = ({ onRegister, onBackToLogin }) => {
   const [name, setName] = useState('');
@@ -9,45 +10,40 @@ const Registration = ({ onRegister, onBackToLogin }) => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
     setError('');
 
-    // Validate fields
     if (!name.trim() || !username.trim() || !password.trim() || !cardano_address.trim()) {
       setError('All fields are required');
       return;
     }
 
-    // Check if username already exists
-    const users = JSON.parse(localStorage.getItem('users') || '[]');
-    const existing_user = users.find(u => u.username === username.trim());
-    
-    if (existing_user) {
-      setError('Username already exists. Please choose a different username.');
-      return;
+    try {
+      // Call backend register
+      await registerUser({
+        name: name.trim(),
+        username: username.trim(),
+        password: password.trim(),
+        cardanoAddress: cardano_address.trim()
+      });
+
+      setSuccess(true);
+
+      setTimeout(() => {
+        onBackToLogin();
+      }, 1500);
+    } catch (err) {
+      // If backend fails, show message; keep existing username-local check as fallback
+      const users = JSON.parse(localStorage.getItem('users') || '[]');
+      const existing_user = users.find(u => u.username === username.trim());
+      if (existing_user) {
+        setError('Username already exists. Please choose a different username.');
+        return;
+      }
+
+      setError(err.message || 'Registration failed');
     }
-
-    // Create new user
-    const new_user = {
-      name: name.trim(),
-      username: username.trim(),
-      password: password.trim(),
-      cardanoAddress: cardano_address.trim(),
-      createdAt: new Date().toISOString()
-    };
-
-    // Save user to localStorage
-    users.push(new_user);
-    localStorage.setItem('users', JSON.stringify(users));
-
-    // Show success message
-    setSuccess(true);
-    
-    // Auto redirect to login after 2 seconds
-    setTimeout(() => {
-      onBackToLogin();
-    }, 2000);
   };
 
   if (success) {

@@ -1,21 +1,21 @@
 import React, { useState } from 'react';
 import './Login.css';
+import { loginUser } from '../api';
 
 const Login = ({ onLogin, onShowRegistration }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
     setError('');
 
-    // Check default credentials first
+    // Check default credentials first (keep local dev fallback)
     const default_username = 'TestUsername';
     const default_password = '12345';
 
     if (username === default_username && password === default_password) {
-      // Successful login with default account
       const default_user = {
         name: 'Test User',
         username: default_username,
@@ -27,22 +27,28 @@ const Login = ({ onLogin, onShowRegistration }) => {
       return;
     }
 
-    // Check registered users
-    const users = JSON.parse(localStorage.getItem('users') || '[]');
-    const user = users.find(u => u.username === username && u.password === password);
-
-    if (user) {
-      // Successful login
-      const user_data = {
-        name: user.name,
-        username: user.username,
-        cardanoAddress: user.cardanoAddress
-      };
+    try {
+      const data = await loginUser({ username, password });
+      // loginUser stores token and currentUser in localStorage
       localStorage.setItem('isLoggedIn', 'true');
-      localStorage.setItem('currentUser', JSON.stringify(user_data));
       onLogin(true);
-    } else {
-      setError('Invalid username or password');
+    } catch (err) {
+      // fallback to previous localStorage auth (if user registered locally)
+      const users = JSON.parse(localStorage.getItem('users') || '[]');
+      const user = users.find(u => u.username === username && u.password === password);
+
+      if (user) {
+        const user_data = {
+          name: user.name,
+          username: user.username,
+          cardanoAddress: user.cardanoAddress
+        };
+        localStorage.setItem('isLoggedIn', 'true');
+        localStorage.setItem('currentUser', JSON.stringify(user_data));
+        onLogin(true);
+      } else {
+        setError(err.message || 'Invalid username or password');
+      }
     }
   };
 

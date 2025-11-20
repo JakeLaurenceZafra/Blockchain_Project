@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import { getNotes, createNote, updateNote, deleteNote } from './api';
 import Login from './components/Login';
 import Registration from './components/Registration';
 import Profile from './components/Profile';
@@ -20,6 +21,7 @@ function App() {
   const [show_view_modal, setShowViewModal] = useState(false);
   const [current_note, setCurrentNote] = useState(null);
   const [editing_note, setEditingNote] = useState(null);
+  const [error, setError] = useState('');
 
   // Check if user is logged in on mount and load user data
   useEffect(() => {
@@ -33,15 +35,23 @@ function App() {
     }
   }, []);
 
-  // Load notes from localStorage on mount
+  // Load notes from API on mount
   useEffect(() => {
-    if (is_logged_in) {
-      const saved_notes = JSON.parse(localStorage.getItem('notes')) || [];
-      setNotes(saved_notes);
-    }
-  }, [is_logged_in]);
+    const load = async () => {
+      try {
+        const data = await getNotes();
+        setNotes(data || []);
+      } catch (err) {
+        setError(err.message || 'Could not load notes');
+        // fallback: try localStorage
+        const local = JSON.parse(localStorage.getItem('notes') || '[]');
+        setNotes(local);
+      }
+    };
+    load();
+  }, []);
 
-  // Save notes to localStorage whenever notes change
+  // Save notes to localStorage whenever notes change (cached copy)
   useEffect(() => {
     localStorage.setItem('notes', JSON.stringify(notes));
   }, [notes]);
@@ -51,25 +61,39 @@ function App() {
     setShowCreateModal(true);
   };
 
-  const handleSaveNote = (note_data) => {
-    if (editing_note) {
-      // Update existing note
-      setNotes(notes.map(note => 
-        note.id === editing_note.id 
-          ? { ...note, ...note_data, updatedAt: new Date().toISOString() }
-          : note
-      ));
-    } else {
-      // Create new note
-      const new_note = {
-        id: Date.now(),
-        ...note_data,
-        createdAt: new Date().toISOString()
-      };
-      setNotes([...notes, new_note]);
+  // Helper to normalize id keys from backend
+  const getId = (n) => n?.id ?? n?._id ?? null;
+
+  const handleSaveNote = async (note_data) => {
+    try {
+      if (editing_note) {
+        // Update existing note via API
+        const payload = {
+          title: note_data.title,
+          content: note_data.content,
+          tag: note_data.tag,
+          // keep pinned state if exists
+          pinned: editing_note.pinned ? true : false
+        };
+        const updated = await updateNote(getId(editing_note), payload);
+        const updatedId = getId(updated) ?? getId(editing_note);
+        setNotes(notes.map(note => (getId(note) === updatedId ? { ...note, ...updated } : note)));
+      } else {
+        // Create new note via API
+        const created = await createNote({
+          title: note_data.title,
+          content: note_data.content,
+          tag: note_data.tag
+        });
+        // backend returns created note object
+        setNotes(prev => [...prev, created]);
+      }
+      setShowCreateModal(false);
+      setEditingNote(null);
+    } catch (err) {
+      // keep UI unchanged but show error
+      setError(err.message || 'Failed to save note');
     }
-    setShowCreateModal(false);
-    setEditingNote(null);
   };
 
   const handleViewNote = (note) => {
@@ -85,23 +109,36 @@ function App() {
     }
   };
 
-  const handleDeleteNote = () => {
+  const handleDeleteNote = async () => {
     if (current_note && window.confirm(`Are you sure you want to delete "${current_note.title}"?`)) {
-      setNotes(notes.filter(note => note.id !== current_note.id));
-      setShowViewModal(false);
-      setCurrentNote(null);
+      try {
+        await deleteNote(getId(current_note));
+        setNotes(notes.filter(note => getId(note) !== getId(current_note)));
+        setShowViewModal(false);
+        setCurrentNote(null);
+      } catch (err) {
+        setError(err.message || 'Failed to delete note');
+      }
     }
   };
 
-  const handlePinNote = () => {
+  const handlePinNote = async () => {
     if (current_note) {
-      setNotes(notes.map(note => 
-        note.id === current_note.id 
-          ? { ...note, pinned: !note.pinned }
-          : note
-      ));
-      // Update current note to reflect pin status
-      setCurrentNote({ ...current_note, pinned: !current_note.pinned });
+      try {
+        const toggled = !current_note.pinned;
+        const payload = {
+          title: current_note.title,
+          content: current_note.content,
+          tag: current_note.tag,
+          pinned: toggled
+        };
+        const updated = await updateNote(getId(current_note), payload);
+        const updatedId = getId(updated) ?? getId(current_note);
+        setNotes(notes.map(note => (getId(note) === updatedId ? { ...note, ...updated } : note)));
+        setCurrentNote(prev => ({ ...prev, pinned: toggled }));
+      } catch (err) {
+        setError(err.message || 'Failed to toggle pin');
+      }
     }
   };
 
@@ -122,6 +159,7 @@ function App() {
   const handleLogout = () => {
     localStorage.removeItem('isLoggedIn');
     localStorage.removeItem('currentUser');
+    localStorage.removeItem('token');
     setIsLoggedIn(false);
     setCurrentUser(null);
     setShowProfile(false);
@@ -265,6 +303,7 @@ function App() {
       >
         👤
       </button>
+      {error && <div style={{color:'red', marginTop:10}}>{error}</div>}
     </div>
   );
 }
