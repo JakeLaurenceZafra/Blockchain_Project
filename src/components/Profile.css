@@ -13,12 +13,14 @@
 
 .profile_content {
     background-color: #fef9e7;
-    margin: 5% auto;
+    margin: 2% auto;
     padding: 55px;
     padding-left: 60px;
     border-radius: 4px;
     width: 90%;
     max-width: 500px;
+    max-height: 90vh;
+    overflow-y: auto;
     box-shadow: 
         0 4px 20px rgba(0, 0, 0, 0.3),
         inset 0 1px 0 rgba(255, 255, 255, 0.5);

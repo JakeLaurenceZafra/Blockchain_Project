@@ -140,3 +140,39 @@
     font-weight: 700;
 }
 
+/* Make both inputs look identical */
+.login_form input {
+    width: 100%;
+    padding: 14px;
+    margin-top: 6px;
+    border: 2px solid #d4a72c;
+    border-radius: 8px;
+    background: #fffdf5;
+    font-size: 16px;
+    font-family: 'Poppins', sans-serif;
+    outline: none;
+    transition: 0.2s ease;
+  }
+  
+  /* Placeholder styling */
+  .login_form input::placeholder {
+    color: #bda77a;
+    font-style: italic;
+  }
+  
+  /* Hover / focus effects */
+  .login_form input:focus {
+    border-color: #f2c029;
+    box-shadow: 0 0 6px rgba(242, 192, 41, 0.4);
+  }
+  
+  /* Label styling */
+  .form_group label {
+    font-weight: bold;
+    font-size: 18px;
+    margin-bottom: 6px;
+    display: block;
+    color: #8b6b2c;
+    font-family: 'Poppins', sans-serif;
+  }
+  

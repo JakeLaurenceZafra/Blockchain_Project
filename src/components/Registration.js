@@ -6,7 +6,6 @@ const Registration = ({ onRegister, onBackToLogin }) => {
   const [name, setName] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [cardano_address, setCardanoAddress] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
 
@@ -14,18 +13,16 @@ const Registration = ({ onRegister, onBackToLogin }) => {
     event.preventDefault();
     setError('');
 
-    if (!name.trim() || !username.trim() || !password.trim() || !cardano_address.trim()) {
+    if (!name.trim() || !username.trim() || !password.trim()) {
       setError('All fields are required');
       return;
     }
 
     try {
-      // Call backend register
       await registerUser({
         name: name.trim(),
         username: username.trim(),
-        password: password.trim(),
-        cardanoAddress: cardano_address.trim()
+        password: password.trim()
       });
 
       setSuccess(true);
@@ -34,7 +31,6 @@ const Registration = ({ onRegister, onBackToLogin }) => {
         onBackToLogin();
       }, 1500);
     } catch (err) {
-      // If backend fails, show message; keep existing username-local check as fallback
       const users = JSON.parse(localStorage.getItem('users') || '[]');
       const existing_user = users.find(u => u.username === username.trim());
       if (existing_user) {
@@ -62,6 +58,7 @@ const Registration = ({ onRegister, onBackToLogin }) => {
       <div className="login_box">
         <h1 className="login_title">Register</h1>
         <p className="login_subtitle">Create a new account</p>
+
         <form onSubmit={handleSubmit} className="login_form">
           <div className="form_group">
             <label htmlFor="name">Name:</label>
@@ -74,6 +71,7 @@ const Registration = ({ onRegister, onBackToLogin }) => {
               placeholder="Enter your name"
             />
           </div>
+
           <div className="form_group">
             <label htmlFor="reg_username">Username:</label>
             <input
@@ -85,6 +83,7 @@ const Registration = ({ onRegister, onBackToLogin }) => {
               placeholder="Choose a username"
             />
           </div>
+
           <div className="form_group">
             <label htmlFor="reg_password">Password:</label>
             <input
@@ -96,24 +95,16 @@ const Registration = ({ onRegister, onBackToLogin }) => {
               placeholder="Choose a password"
             />
           </div>
-          <div className="form_group">
-            <label htmlFor="cardano_address">Cardano Address:</label>
-            <input
-              type="text"
-              id="cardano_address"
-              value={cardano_address}
-              onChange={(event) => setCardanoAddress(event.target.value)}
-              required
-              placeholder="Enter your Cardano address"
-            />
-          </div>
+
           {error && <div className="error_message">{error}</div>}
+
           <button type="submit" className="btn_primary login_btn">
             Register
           </button>
-          <button 
-            type="button" 
-            className="btn_secondary login_btn" 
+
+          <button
+            type="button"
+            className="btn_secondary login_btn"
             onClick={onBackToLogin}
             style={{ marginTop: '10px' }}
           >

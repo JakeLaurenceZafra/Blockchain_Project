@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import './CreateNoteModal.css';
 
 const CreateNoteModal = ({ show, onClose, onSave, editingNote }) => {
   const [title, setTitle] = useState('');
@@ -47,39 +48,41 @@ const CreateNoteModal = ({ show, onClose, onSave, editingNote }) => {
         <h2>{editingNote ? 'Edit Note' : 'Create New Note'}</h2>
         <form onSubmit={handleSubmit}>
           <div className="form_group">
-            <label htmlFor="note_title">Title:</label>
+            <label htmlFor="note_title">📝 Title</label>
             <input
               type="text"
               id="note_title"
               value={title}
               onChange={(event) => setTitle(event.target.value)}
               required
-              placeholder="Enter note title"
+              placeholder="Give your note a memorable title..."
+              maxLength={255}
             />
           </div>
           <div className="form_group">
-            <label htmlFor="note_content">Note:</label>
+            <label htmlFor="note_content">✍️ Note Content</label>
             <textarea
               id="note_content"
               value={content}
               onChange={(event) => setContent(event.target.value)}
               required
-              placeholder="Enter your note content"
+              placeholder="Write your thoughts, ideas, or reminders here..."
+              rows={8}
             />
           </div>
           <div className="form_group">
-            <label htmlFor="note_tag">Tag:</label>
+            <label htmlFor="note_tag">🏷️ Category</label>
             <select
               id="note_tag"
               value={tag}
               onChange={(event) => setTag(event.target.value)}
               required
             >
-              <option value="">Select a tag</option>
-              <option value="To-Do">To-Do</option>
-              <option value="Reminder">Reminder</option>
-              <option value="Work">Work</option>
-              <option value="School">School</option>
+              <option value="">Choose a category...</option>
+              <option value="To-Do">✓ To-Do</option>
+              <option value="Reminder">⏰ Reminder</option>
+              <option value="Work">💼 Work</option>
+              <option value="School">🎓 School</option>
             </select>
           </div>
           <div className="form_actions">

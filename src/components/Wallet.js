@@ -1,28 +1,53 @@
 import React, { useState, useEffect } from 'react';
 import './Wallet.css';
+import { getAvailableWallets, areWalletsAvailable } from '../utils/blockchain';
+import { useWallet } from '../contexts/WalletContext';
 
 const Wallet = () => {
-  const [is_connected, setIsConnected] = useState(false);
-  const [wallet_type, setWalletType] = useState('');
-  const [wallet_address, setWalletAddress] = useState('');
+  const { 
+    isConnected: is_connected, 
+    walletType: wallet_type, 
+    walletAddress: wallet_address,
+    connectWallet,
+    disconnectWallet: handleDisconnectContext
+  } = useWallet();
+  
   const [show_connect_form, setShowConnectForm] = useState(false);
   const [selected_wallet_type, setSelectedWalletType] = useState('');
   const [show_success, setShowSuccess] = useState(false);
   const [recipient_address, setRecipientAddress] = useState('');
   const [amount, setAmount] = useState('');
+  const [available_wallets, setAvailableWallets] = useState([]);
+  const [connection_error, setConnectionError] = useState('');
 
-  const wallet_types = ['Nami', 'Eternl', 'Flint', 'Yoroi', 'Gero', 'Typhon'];
-
-  // Load wallet state from localStorage on mount
+  // Check for available wallets on mount and when window.cardano changes
   useEffect(() => {
-    const saved_wallet = localStorage.getItem('wallet');
-    if (saved_wallet) {
-      const wallet = JSON.parse(saved_wallet);
-      setIsConnected(wallet.isConnected);
-      setWalletType(wallet.walletType);
-      setWalletAddress(wallet.walletAddress);
-    }
+    const checkWallets = () => {
+      if (areWalletsAvailable()) {
+        const wallets = getAvailableWallets();
+        setAvailableWallets(wallets);
+      } else {
+        setAvailableWallets([]);
+      }
+    };
+
+    checkWallets();
+    
+    // Check periodically in case wallet extension loads later
+    const interval = setInterval(checkWallets, 1000);
+    
+    return () => clearInterval(interval);
   }, []);
+
+  // Update local state when wallet context changes
+  useEffect(() => {
+    if (is_connected) {
+      setShowSuccess(true);
+      setTimeout(() => {
+        setShowSuccess(false);
+      }, 3000);
+    }
+  }, [is_connected]);
 
   const handleConnectClick = () => {
     if (is_connected) {
@@ -34,42 +59,64 @@ const Wallet = () => {
     }
   };
 
-  const handleConnectWallet = () => {
+  const handleConnectWallet = async () => {
     if (!selected_wallet_type) {
       alert('Please select a wallet type');
       return;
     }
 
-    // Simulate wallet connection
-    // In a real app, this would connect to the actual wallet
-    const mock_address = `addr1${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}`;
+    setConnectionError('');
     
-    const wallet_data = {
-      isConnected: true,
-      walletType: selected_wallet_type,
-      walletAddress: mock_address
-    };
+    try {
+      // Check if wallet is available
+      if (!window.cardano || !window.cardano[selected_wallet_type]) {
+        throw new Error(`${selected_wallet_type} wallet not found. Please install the wallet extension.`);
+      }
 
-    localStorage.setItem('wallet', JSON.stringify(wallet_data));
-    setIsConnected(true);
-    setWalletType(selected_wallet_type);
-    setWalletAddress(mock_address);
-    setShowSuccess(true);
-    setShowConnectForm(false);
+      // Enable wallet connection
+      const api = await window.cardano[selected_wallet_type].enable();
 
-    // Hide success message after 3 seconds
-    setTimeout(() => {
-      setShowSuccess(false);
-    }, 3000);
+      // Get wallet address
+      // Try getChangeAddress first (most common), then getAddresses
+      let address;
+      try {
+        address = await api.getChangeAddress();
+      } catch (e) {
+        try {
+          const addresses = await api.getAddresses();
+          address = addresses[0];
+        } catch (e2) {
+          throw new Error('Could not retrieve wallet address');
+        }
+      }
+      
+      // Cardano wallet APIs typically return bech32 addresses directly
+      // Store the address as-is (should be bech32 format)
+      const bech32Address = typeof address === 'string' ? address : address.toString();
+
+      // Use context to connect wallet
+      await connectWallet(selected_wallet_type, api, bech32Address);
+      
+      setShowSuccess(true);
+      setShowConnectForm(false);
+      setConnectionError('');
+
+      // Hide success message after 3 seconds
+      setTimeout(() => {
+        setShowSuccess(false);
+      }, 3000);
+    } catch (error) {
+      console.error('Error connecting to wallet:', error);
+      setConnectionError(error.message || 'Failed to connect to wallet');
+      alert(`Failed to connect to wallet: ${error.message}`);
+    }
   };
 
   const handleDisconnect = () => {
-    localStorage.removeItem('wallet');
-    setIsConnected(false);
-    setWalletType('');
-    setWalletAddress('');
+    handleDisconnectContext();
     setShowConnectForm(false);
     setShowSuccess(false);
+    setConnectionError('');
   };
 
   const handleMakeTransaction = (event) => {
@@ -105,6 +152,30 @@ const Wallet = () => {
         {/* Connect Wallet Form */}
         {show_connect_form && !is_connected && (
           <div className="connect_wallet_form">
+            {!areWalletsAvailable() && (
+              <div style={{ 
+                background: '#ff6b6b', 
+                color: '#fff', 
+                padding: '15px', 
+                borderRadius: '4px', 
+                marginBottom: '20px',
+                textAlign: 'center'
+              }}>
+                No Cardano wallets detected. Please install a Cardano wallet extension (Nami, Eternl, Flint, etc.)
+              </div>
+            )}
+            {connection_error && (
+              <div style={{ 
+                background: '#ff6b6b', 
+                color: '#fff', 
+                padding: '15px', 
+                borderRadius: '4px', 
+                marginBottom: '20px',
+                textAlign: 'center'
+              }}>
+                {connection_error}
+              </div>
+            )}
             <div className="form_group">
               <label htmlFor="wallet_type">Select Wallet Type:</label>
               <select
@@ -114,12 +185,22 @@ const Wallet = () => {
                 required
               >
                 <option value="">Choose a wallet</option>
-                {wallet_types.map(type => (
-                  <option key={type} value={type}>{type}</option>
-                ))}
+                {available_wallets.length > 0 ? (
+                  available_wallets.map(type => (
+                    <option key={type} value={type}>{type}</option>
+                  ))
+                ) : (
+                  ['Nami', 'Eternl', 'Flint', 'Yoroi', 'Gero', 'Typhon'].map(type => (
+                    <option key={type} value={type}>{type} (not detected)</option>
+                  ))
+                )}
               </select>
             </div>
-            <button className="btn_primary" onClick={handleConnectWallet}>
+            <button 
+              className="btn_primary" 
+              onClick={handleConnectWallet}
+              disabled={!selected_wallet_type || !areWalletsAvailable()}
+            >
               Connect Wallet
             </button>
           </div>
