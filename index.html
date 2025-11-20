@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notes App</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Kalam:wght@300;400;700&family=Caveat:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-main">
+                <h1>My Notes</h1>
+                <div class="filter-section">
+                    <label class="filter-label">Filter by Tag:</label>
+                    <div class="filter-buttons">
+                        <button class="filter-btn active" data-filter="all">All</button>
+                        <button class="filter-btn" data-filter="To-Do">To-Do</button>
+                        <button class="filter-btn" data-filter="Reminder">Reminder</button>
+                        <button class="filter-btn" data-filter="Work">Work</button>
+                        <button class="filter-btn" data-filter="School">School</button>
+                    </div>
+                    <button id="createNoteBtn" class="btn-primary">Create Note</button>
+                </div>
+            </div>
+        </header>
+
+        <div id="notesList" class="notes-list">
+            <!-- Notes will be displayed here -->
+        </div>
+    </div>
+
+    <!-- Create Note Modal -->
+    <div id="createNoteModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2 id="modalTitle">Create New Note</h2>
+            <form id="noteForm">
+                <div class="form-group">
+                    <label for="noteTitle">Title:</label>
+                    <input type="text" id="noteTitle" required placeholder="Enter note title">
+                </div>
+                <div class="form-group">
+                    <label for="noteContent">Note:</label>
+                    <textarea id="noteContent" required placeholder="Enter your note content"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="noteTag">Tag:</label>
+                    <select id="noteTag" required>
+                        <option value="">Select a tag</option>
+                        <option value="To-Do">To-Do</option>
+                        <option value="Reminder">Reminder</option>
+                        <option value="Work">Work</option>
+                        <option value="School">School</option>
+                    </select>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn-primary" id="submitBtn">Save</button>
+                    <button type="button" class="btn-secondary" id="cancelBtn">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- View Note Modal -->
+    <div id="viewNoteModal" class="modal">
+        <div class="modal-content">
+            <span class="close-view">&times;</span>
+            <h2 id="viewNoteTitle"></h2>
+            <div id="viewNoteTag" class="note-tag-display"></div>
+            <div id="viewNoteContent" class="note-content"></div>
+            <div class="note-actions">
+                <button id="editNoteBtn" class="btn-primary">Edit</button>
+                <button id="deleteNoteBtn" class="btn-danger">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
+

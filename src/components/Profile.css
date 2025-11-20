@@ -1,0 +1,125 @@
+.profile_modal {
+    display: block;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(3px);
+    animation: fadeIn 0.3s;
+}
+
+.profile_content {
+    background-color: #fef9e7;
+    margin: 5% auto;
+    padding: 55px;
+    padding-left: 60px;
+    border-radius: 4px;
+    width: 90%;
+    max-width: 500px;
+    box-shadow: 
+        0 4px 20px rgba(0, 0, 0, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.5);
+    animation: slideDown 0.3s;
+    position: relative;
+    border: 1px solid #e8d5b7;
+    background-image: 
+        repeating-linear-gradient(
+            transparent,
+            transparent 31px,
+            rgba(232, 213, 183, 0.4) 31px,
+            rgba(232, 213, 183, 0.4) 32px
+        );
+}
+
+.profile-content::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 50px;
+    height: 100%;
+    background: linear-gradient(to right, 
+        rgba(200, 0, 0, 0.2) 0%,
+        rgba(200, 0, 0, 0.2) 2px,
+        transparent 2px
+    );
+    border-radius: 4px 0 0 4px;
+}
+
+.profile_title {
+    color: #8b6914;
+    margin-bottom: 25px;
+    padding-right: 40px;
+    font-family: 'Caveat', cursive;
+    font-size: 2rem;
+    font-weight: 700;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
+    border-bottom: 2px solid #d4af37;
+    padding-bottom: 10px;
+}
+
+.profile_info {
+    margin-bottom: 25px;
+}
+
+.profile_field {
+    margin-bottom: 20px;
+}
+
+.profile-field label {
+    display: block;
+    margin-bottom: 8px;
+    color: #8b6914;
+    font-weight: 600;
+    font-size: 1.1rem;
+    font-family: 'Caveat', cursive;
+}
+
+.profile_value {
+    background: rgba(255, 255, 255, 0.7);
+    padding: 12px;
+    border: 2px solid #d4af37;
+    border-radius: 2px;
+    color: #6b5b2d;
+    font-family: 'Kalam', cursive;
+    font-size: 1rem;
+    word-wrap: break-word;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.cardano_address {
+    font-size: 0.9rem;
+    font-family: 'Courier New', monospace;
+}
+
+.profile_actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 2px solid #e8d5b7;
+}
+
+.close_profile {
+    color: #8b6914;
+    float: right;
+    font-size: 32px;
+    font-weight: bold;
+    cursor: pointer;
+    position: absolute;
+    right: 20px;
+    top: 20px;
+    transition: all 0.2s;
+    line-height: 1;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.close-profile:hover {
+    color: #6b5b2d;
+    transform: scale(1.1);
+}
+
