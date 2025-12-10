@@ -44,6 +44,20 @@ const NoteItem = ({ note, onViewNote }) => {
       </div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <h3 style={{ flex: 1, marginRight: '10px' }}>{note.title}</h3>
+        {note.status && (
+          <span style={{
+            marginRight: '8px',
+            padding: '4px 8px',
+            borderRadius: '6px',
+            background: note.status.toLowerCase().includes('pending') ? '#fff3cd' : '#e6f7f6',
+            border: '1px solid #d4af37',
+            color: '#8b6914',
+            fontWeight: 600,
+            fontSize: '0.8rem'
+          }}>
+            {note.status}
+          </span>
+        )}
         {note.transactionId && (
           <button
             onClick={handleCopyTransaction}

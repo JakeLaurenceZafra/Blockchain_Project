@@ -43,6 +43,25 @@ const ViewNoteModal = ({ show, note, onClose, onEdit, onDelete, onPin }) => {
       <div className="modal_content" onClick={(event) => event.stopPropagation()}>
         <span className="close_view" onClick={onClose}>&times;</span>
         <h2 id="view_note_title">{note.title}</h2>
+        {note.status && (
+          <div style={{
+            marginTop: '4px',
+            marginBottom: '8px',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '6px 10px',
+            borderRadius: '6px',
+            background: note.status.toLowerCase().includes('pending') ? '#fff3cd' : '#e6f7f6',
+            border: '1px solid #d4af37',
+            color: '#8b6914',
+            fontWeight: 600,
+            fontSize: '0.85rem'
+          }}>
+            <span>🔄 Status:</span>
+            <span>{note.status}</span>
+          </div>
+        )}
         {note.tag && (
           <div className="note_tag_display">
             <span className={`note_tag ${getTagClass(note.tag)}`}>

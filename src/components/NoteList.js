@@ -18,7 +18,7 @@ const NoteList = ({ notes, onViewNote, currentFilter }) => {
   return (
     <div className="notes_list">
       {notes.map(note => (
-        <NoteItem key={note.id} note={note} onViewNote={onViewNote} />
+        <NoteItem key={note.id || note._id} note={note} onViewNote={onViewNote} />
       ))}
     </div>
   );

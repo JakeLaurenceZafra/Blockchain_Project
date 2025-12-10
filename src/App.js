@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { getNotes, createNote, updateNote, deleteNote } from './api';
 import { useWallet } from './contexts/WalletContext';
-import { createNoteTransaction } from './utils/blockchain';
+import { createProvider, sendTransaction } from './utils/blockchain';
 import Profile from './components/Profile';
 import Wallet from './components/Wallet';
 import Header from './components/Header';
@@ -78,6 +78,7 @@ function App() {
 
   const handleSaveNote = async (note_data) => {
     try {
+      setError('');
       if (editing_note) {
         // Update existing note via API
         const payload = {
@@ -85,23 +86,50 @@ function App() {
           content: note_data.content,
           tag: note_data.tag,
           // keep pinned state if exists
-          pinned: editing_note.pinned ? true : false
+          pinned: editing_note.pinned ? true : false,
+          status: 'Pending'
         };
         const updated = await updateNote(getId(editing_note), payload);
         const updatedId = getId(updated) ?? getId(editing_note);
         setNotes(notes.map(note => (getId(note) === updatedId ? { ...note, ...updated } : note)));
+
+        // Fire blockchain tx with metadata
+        if (isConnected && walletAddress) {
+          try {
+            setBlockchainStatus('Submitting update transaction...');
+            const walletApi = await getWalletApi();
+            const txHash = await sendTransaction({
+              provider: createProvider(),
+              walletApi,
+              targetAddress: walletAddress,
+              noteContent: note_data.content,
+              noteTitle: note_data.title,
+              noteTag: note_data.tag,
+              noteId: updatedId,
+              action: 'update'
+            });
+            const finalized = await updateNote(updatedId, { transactionId: txHash, txHash, status: 'Submitted' });
+            setNotes(prev => prev.map(note => (getId(note) === updatedId ? { ...note, ...finalized } : note)));
+            setBlockchainStatus(`Update tx submitted: ${txHash.slice(0, 12)}...`);
+          } catch (blockchainError) {
+            console.error('Update blockchain tx failed:', blockchainError);
+            setBlockchainStatus('Update saved, but blockchain tx failed.');
+          } finally {
+            setTimeout(() => setBlockchainStatus(''), 5000);
+          }
+        }
       } else {
         // Create new note via API (transactionId will be added after blockchain transaction)
         const created = await createNote({
           title: note_data.title,
           content: note_data.content,
-          tag: note_data.tag
+          tag: note_data.tag,
+          status: 'Pending'
         });
         // backend returns created note object
         setNotes(prev => [...prev, created]);
 
         // Create blockchain transaction for new notes (only if wallet is connected)
-        let transactionId = null;
         console.log('Wallet status:', { isConnected, walletAddress, hasWallet: !!walletAddress });
         
         if (isConnected && walletAddress) {
@@ -111,33 +139,24 @@ function App() {
             console.log('Wallet API:', walletApi ? 'Available' : 'Not available');
             
             if (walletApi) {
-              const txHash = await createNoteTransaction(walletApi, walletAddress, note_data);
-              transactionId = txHash;
+              const txHash = await sendTransaction({
+                provider: createProvider(),
+                walletApi,
+                targetAddress: walletAddress,
+                noteContent: note_data.content,
+                noteTitle: note_data.title,
+                noteTag: note_data.tag,
+                noteId: getId(created),
+                action: 'create'
+              });
+
               setBlockchainStatus(`Note recorded on blockchain! Transaction: ${txHash.substring(0, 16)}...`);
-              console.log('Blockchain transaction created:', txHash);
-              console.log('Created note:', created);
-              
-              // Update the note with transaction ID
               const noteId = getId(created);
-              console.log('Updating note with ID:', noteId, 'Transaction ID:', txHash);
-              
+
               if (noteId) {
                 try {
-                  console.log('Calling updateNote with:', { noteId, transactionId: txHash });
-                  const updated = await updateNote(noteId, { transactionId: txHash });
-                  console.log('Note updated successfully:', updated);
-                  console.log('Updated note transactionId:', updated.transactionId);
-                  
-                  // Update local state
-                  setNotes(prev => prev.map(note => {
-                    const currentId = getId(note);
-                    if (currentId === noteId) {
-                      console.log('Updating local note state with transactionId:', txHash);
-                      return { ...note, transactionId: txHash };
-                    }
-                    return note;
-                  }));
-                  
+                  const updated = await updateNote(noteId, { transactionId: txHash, txHash, status: 'Submitted' });
+                  setNotes(prev => prev.map(note => (getId(note) === noteId ? { ...note, ...updated } : note)));
                   // Refresh notes from server to ensure we have the latest data
                   setTimeout(async () => {
                     try {
@@ -150,21 +169,10 @@ function App() {
                   }, 1000);
                 } catch (updateError) {
                   console.error('Failed to update note with transaction ID:', updateError);
-                  console.error('Update error details:', updateError.message);
-                  console.error('Full error:', updateError);
-                  
-                  // Try to show error to user
                   setBlockchainStatus(`Transaction created (${txHash.substring(0, 16)}...) but failed to save ID. Check console.`);
                 }
-              } else {
-                console.error('No valid note ID found:', created);
-                console.error('Note object keys:', Object.keys(created || {}));
               }
-              
-              // Clear status after 5 seconds
-              setTimeout(() => {
-                setBlockchainStatus('');
-              }, 5000);
+              setTimeout(() => setBlockchainStatus(''), 5000);
             } else {
               setBlockchainStatus('Wallet connection lost. Note saved but not recorded on blockchain.');
               setTimeout(() => {
@@ -210,8 +218,40 @@ function App() {
   const handleDeleteNote = async () => {
     if (current_note && window.confirm(`Are you sure you want to delete "${current_note.title}"?`)) {
       try {
-        await deleteNote(getId(current_note));
-        setNotes(notes.filter(note => getId(note) !== getId(current_note)));
+        setError('');
+        const noteId = getId(current_note);
+        // Mark as pending delete locally
+        setNotes(prev => prev.map(n => (getId(n) === noteId ? { ...n, status: 'Pending Delete' } : n)));
+
+        if (isConnected && walletAddress) {
+          const walletApi = await getWalletApi();
+          try {
+            setBlockchainStatus('Submitting delete transaction...');
+            await sendTransaction({
+              provider: createProvider(),
+              walletApi,
+              targetAddress: walletAddress,
+              noteContent: current_note.content,
+              noteTitle: current_note.title,
+              noteTag: current_note.tag,
+              noteId,
+              action: 'delete'
+            });
+            setBlockchainStatus('');
+          } catch (chainErr) {
+            console.error('Delete blockchain tx failed:', chainErr);
+            const msg =
+              (chainErr && chainErr.message) ||
+              (typeof chainErr === 'string' ? chainErr : 'Unknown error');
+            setBlockchainStatus(`Delete tx failed: ${msg}`);
+            // revert pending state since delete did not happen on-chain
+            setNotes(prev => prev.map(n => (getId(n) === noteId ? { ...n, status: current_note.status || '' } : n)));
+            throw chainErr;
+          }
+        }
+
+        await deleteNote(noteId);
+        setNotes(prev => prev.filter(note => getId(note) !== noteId));
         setShowViewModal(false);
         setCurrentNote(null);
       } catch (err) {

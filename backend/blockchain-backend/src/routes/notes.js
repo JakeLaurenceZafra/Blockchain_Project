@@ -62,12 +62,23 @@ router.get('/', async (req, res) => {
 
 // Create note
 router.post('/', async (req, res) => {
-  const { title, content, tag, transactionId } = req.body;
+  const { title, content, tag, transactionId, txHash, status } = req.body;
   if (!title || !content || !tag) return res.status(400).json({ message: 'Missing fields' });
 
   const [result] = await pool.query(
-    'INSERT INTO notes (userId, title, content, tag, pinned, transactionId, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?)',
-    [req.walletUserId, title, content, tag, 0, transactionId || null, new Date()]
+    'INSERT INTO notes (userId, title, content, tag, pinned, transactionId, txHash, status, walletAddress, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    [
+      req.walletUserId,
+      title,
+      content,
+      tag,
+      0,
+      transactionId || txHash || null,
+      txHash || transactionId || null,
+      status || 'Pending',
+      req.walletAddress,
+      new Date()
+    ]
   );
   const [rows] = await pool.query('SELECT * FROM notes WHERE id = ?', [result.insertId]);
   res.status(201).json(rows[0]);
@@ -76,7 +87,7 @@ router.post('/', async (req, res) => {
 // Update note
 router.put('/:id', async (req, res) => {
   const { id } = req.params;
-  const { title, content, tag, pinned, transactionId } = req.body;
+  const { title, content, tag, pinned, transactionId, txHash, status } = req.body;
   
   console.log('Update note request:', { id, userId: req.walletUserId, body: req.body });
   
@@ -104,6 +115,14 @@ router.put('/:id', async (req, res) => {
     updates.push('transactionId=?');
     values.push(transactionId);
     console.log('Adding transactionId to update:', transactionId);
+  }
+  if (txHash !== undefined) {
+    updates.push('txHash=?');
+    values.push(txHash);
+  }
+  if (status !== undefined) {
+    updates.push('status=?');
+    values.push(status);
   }
   
   if (updates.length === 0) {
