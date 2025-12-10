@@ -2,8 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { getNotes, createNote, updateNote, deleteNote } from './api';
 import { useWallet } from './contexts/WalletContext';
 import { createNoteTransaction } from './utils/blockchain';
-import Login from './components/Login';
-import Registration from './components/Registration';
 import Profile from './components/Profile';
 import Wallet from './components/Wallet';
 import Header from './components/Header';
@@ -12,11 +10,8 @@ import CreateNoteModal from './components/CreateNoteModal';
 import ViewNoteModal from './components/ViewNoteModal';
 
 function App() {
-  const { isConnected, walletAddress, getWalletApi } = useWallet();
-  const [is_logged_in, setIsLoggedIn] = useState(false);
-  const [show_registration, setShowRegistration] = useState(false);
+  const { isConnected, walletAddress, getWalletApi, disconnectWallet } = useWallet();
   const [show_profile, setShowProfile] = useState(false);
-  const [show_wallet, setShowWallet] = useState(false);
   const [current_user, setCurrentUser] = useState(null);
   const [notes, setNotes] = useState([]);
   const [current_filter, setCurrentFilter] = useState('all');
@@ -27,21 +22,25 @@ function App() {
   const [error, setError] = useState('');
   const [blockchain_status, setBlockchainStatus] = useState('');
 
-  // Check if user is logged in on mount and load user data
+  // Derive the "user" from the connected wallet
   useEffect(() => {
-    const logged_in = localStorage.getItem('isLoggedIn') === 'true';
-    setIsLoggedIn(logged_in);
-    if (logged_in) {
-      const user_data = localStorage.getItem('currentUser');
-      if (user_data) {
-        setCurrentUser(JSON.parse(user_data));
-      }
+    if (isConnected && walletAddress) {
+      const walletUser = {
+        name: 'Wallet User',
+        username: walletAddress,
+        cardanoAddress: walletAddress
+      };
+      setCurrentUser(walletUser);
+      localStorage.setItem('currentUser', JSON.stringify(walletUser));
+    } else {
+      setCurrentUser(null);
+      localStorage.removeItem('currentUser');
     }
-  }, []);
+  }, [isConnected, walletAddress]);
 
-  // Load notes from API on mount (only if logged in)
+  // Load notes from API when wallet is connected
   useEffect(() => {
-    if (!is_logged_in) {
+    if (!isConnected || !walletAddress) {
       setNotes([]);
       return;
     }
@@ -62,7 +61,7 @@ function App() {
       }
     };
     load();
-  }, [is_logged_in]);
+  }, [isConnected, walletAddress]);
 
   // Save notes to localStorage whenever notes change (cached copy)
   useEffect(() => {
@@ -245,22 +244,11 @@ function App() {
     setCurrentFilter(filter);
   };
 
-  const handleLogin = (logged_in) => {
-    setIsLoggedIn(logged_in);
-    if (logged_in) {
-      const user_data = localStorage.getItem('currentUser');
-      if (user_data) {
-        setCurrentUser(JSON.parse(user_data));
-      }
-    }
-  };
-
   const handleLogout = () => {
-    localStorage.removeItem('isLoggedIn');
     localStorage.removeItem('currentUser');
-    localStorage.removeItem('token');
-    setIsLoggedIn(false);
+    disconnectWallet();
     setCurrentUser(null);
+    setNotes([]);
     setShowProfile(false);
   };
 
@@ -273,48 +261,14 @@ function App() {
   const pinned_notes = filtered_notes.filter(note => note.pinned);
   const unpinned_notes = filtered_notes.filter(note => !note.pinned);
 
-  // Show registration page if registration is requested
-  if (show_registration) {
-    return (
-      <Registration 
-        onRegister={() => {
-          // Registration handled in Registration component
-        }}
-        onBackToLogin={() => setShowRegistration(false)}
-      />
-    );
-  }
-
-  // Show login page if not logged in
-  if (!is_logged_in) {
-    return (
-      <Login 
-        onLogin={handleLogin}
-        onShowRegistration={() => setShowRegistration(true)}
-      />
-    );
-  }
-
-  // Show wallet page if requested
-  if (show_wallet) {
+  // Require a wallet connection for all note features
+  if (!isConnected) {
     return (
       <div className="container">
-        <button 
-          className="btn_secondary back_button" 
-          onClick={(e) => {
-            e.preventDefault();
-            setShowWallet(false);
-          }}
-          style={{ 
-            margin: '20px', 
-            position: 'fixed', 
-            top: '20px', 
-            left: '20px',
-            zIndex: 1000
-          }}
-        >
-          ← Back to Notes
-        </button>
+        <div className="empty_state">
+          <h2>Connect your wallet to access notes</h2>
+          <p>Your wallet is now the only authentication method.</p>
+        </div>
         <Wallet />
       </div>
     );

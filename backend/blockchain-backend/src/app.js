@@ -1,7 +1,6 @@
 import express from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
-import authRoutes from './routes/auth.js';
 import notesRoutes from './routes/notes.js';
 import pool from './config/db.js';
 
@@ -15,7 +14,6 @@ app.use(express.json());
 app.get('/api/ping', (req, res) => res.json({ ok: true }));
 
 // Routes
-app.use('/api/auth', authRoutes);
 app.use('/api/notes', notesRoutes);
 
 // Start after DB ping

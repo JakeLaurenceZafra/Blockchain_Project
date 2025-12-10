@@ -35,9 +35,12 @@
   "devDependencies": {
     "buffer": "^6.0.3",
     "crypto-browserify": "^3.12.1",
+    "get-proto": "^1.0.1",
+    "node-releases": "^2.0.14",
     "path-browserify": "^1.0.1",
     "process": "^0.11.10",
     "react-app-rewired": "^2.2.1",
+    "source-map": "^0.6.1",
     "stream-browserify": "^3.0.0"
   }
 }
